@@ -50,7 +50,6 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stHeader"] { background: transparent; }
-[data-testid="stToolbar"] { display: none; }
 
 .block-container {
   padding-top: 1.5rem !important;
@@ -466,10 +465,41 @@ section[data-testid="stSidebar"] .stButton > button {
   font-size: 0.82rem !important;
   padding: 0.45rem 0.25rem !important;
   min-height: 2.4rem !important;
+  width: 100% !important;
+  white-space: nowrap !important;
 }
 
 section[data-testid="stSidebar"] {
   background: #f7fbfb;
+}
+
+@media (max-width: 768px) {
+  section[data-testid="stSidebar"] {
+    min-width: 86vw !important;
+    max-width: 86vw !important;
+  }
+
+  section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
+    gap: 0.35rem !important;
+  }
+
+  section[data-testid="stSidebar"] [data-testid="column"] {
+    min-width: 0 !important;
+  }
+
+  section[data-testid="stSidebar"] .stButton > button {
+    min-height: 2.65rem !important;
+    font-size: 0.88rem !important;
+    padding: 0.4rem 0.15rem !important;
+  }
+
+  [data-testid="stSidebarCollapsedControl"],
+  [data-testid="stSidebarCollapseButton"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 1000000 !important;
+  }
 }
 </style>
 """
@@ -620,36 +650,41 @@ def render_question_navigation(questions: list[dict]) -> None:
     )
     st.sidebar.caption("✓ Correct  ·  ✕ Wrong  ·  Number = unanswered")
 
-    columns = st.sidebar.columns(4)
     current = st.session_state.q_index
 
-    for index, question in enumerate(questions):
-        attempted = index in st.session_state.checked
-        selected = st.session_state.answers.get(index, set())
+    # Build separate rows so Streamlit cannot stack long button columns on mobile.
+    for row_start in range(0, len(questions), 3):
+        columns = st.sidebar.columns(3)
+        for column_index, index in enumerate(
+            range(row_start, min(row_start + 3, len(questions)))
+        ):
+            question = questions[index]
+            attempted = index in st.session_state.checked
+            selected = st.session_state.answers.get(index, set())
 
-        if attempted and is_correct(selected, question["correct"]):
-            label = f"✓ {index + 1}"
-            status = "Correct"
-        elif attempted:
-            label = f"✕ {index + 1}"
-            status = "Wrong"
-        else:
-            label = str(index + 1)
-            status = "Not answered"
+            if attempted and is_correct(selected, question["correct"]):
+                label = f"✓ {index + 1}"
+                status = "Correct"
+            elif attempted:
+                label = f"✕ {index + 1}"
+                status = "Wrong"
+            else:
+                label = str(index + 1)
+                status = "Not answered"
 
-        with columns[index % 4]:
-            if st.button(
-                label,
-                key=f"nav_question_{index}",
-                type="primary" if index == current else "secondary",
-                use_container_width=True,
-                help=f"Question {index + 1}: {status}",
-            ):
-                st.session_state.q_index = index
-                st.session_state.started = True
-                st.session_state.finished = False
-                st.session_state.ended_early = False
-                st.rerun()
+            with columns[column_index]:
+                if st.button(
+                    label,
+                    key=f"nav_question_{index}",
+                    type="primary" if index == current else "secondary",
+                    use_container_width=True,
+                    help=f"Question {index + 1}: {status}",
+                ):
+                    st.session_state.q_index = index
+                    st.session_state.started = True
+                    st.session_state.finished = False
+                    st.session_state.ended_early = False
+                    st.rerun()
 
 
 def render_question(q: dict, q_index: int, total: int) -> None:
