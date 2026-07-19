@@ -403,16 +403,69 @@ h1, h2, h3, h4, [data-testid="stMarkdownContainer"] h3 {
   border-radius: 12px !important;
   font-weight: 600 !important;
   padding: 0.65rem 1.1rem !important;
-  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+  color: #1a2b3c !important;
+  background: #ffffff !important;
+  border: 1.5px solid #d5e0e6 !important;
+}
+.stButton > button p,
+.stButton > button span,
+.stButton > button div {
+  color: inherit !important;
 }
 .stButton > button[kind="primary"],
 .stButton > button[data-testid="baseButton-primary"] {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
+  background: #0d7377 !important;
+  border-color: #0d7377 !important;
+  color: #ffffff !important;
 }
-.stButton > button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(13, 115, 119, 0.22) !important;
+.stButton > button[kind="secondary"],
+.stButton > button[data-testid="baseButton-secondary"] {
+  background: #ffffff !important;
+  border-color: #d5e0e6 !important;
+  color: #1a2b3c !important;
+}
+.stButton > button:hover,
+.stButton > button:focus,
+.stButton > button:active,
+.stButton > button[kind="primary"]:hover,
+.stButton > button[data-testid="baseButton-primary"]:hover,
+.stButton > button[kind="secondary"]:hover,
+.stButton > button[data-testid="baseButton-secondary"]:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  background: inherit !important;
+  border-color: inherit !important;
+  color: inherit !important;
+}
+.stButton > button[kind="primary"]:hover,
+.stButton > button[data-testid="baseButton-primary"]:hover,
+.stButton > button[kind="primary"]:focus,
+.stButton > button[data-testid="baseButton-primary"]:focus,
+.stButton > button[kind="primary"]:active,
+.stButton > button[data-testid="baseButton-primary"]:active {
+  background: #0d7377 !important;
+  border-color: #0d7377 !important;
+  color: #ffffff !important;
+}
+.stButton > button[kind="secondary"]:hover,
+.stButton > button[data-testid="baseButton-secondary"]:hover,
+.stButton > button:not([kind="primary"]):hover,
+.stButton > button[kind="secondary"]:focus,
+.stButton > button[data-testid="baseButton-secondary"]:focus,
+.stButton > button:not([kind="primary"]):focus,
+.stButton > button[kind="secondary"]:active,
+.stButton > button[data-testid="baseButton-secondary"]:active,
+.stButton > button:not([kind="primary"]):active {
+  background: #ffffff !important;
+  border-color: #d5e0e6 !important;
+  color: #1a2b3c !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button {
+  font-size: 0.82rem !important;
+  padding: 0.45rem 0.25rem !important;
+  min-height: 2.4rem !important;
 }
 
 section[data-testid="stSidebar"] {
@@ -556,6 +609,49 @@ def end_practice_early() -> None:
     st.rerun()
 
 
+def render_question_navigation(questions: list[dict]) -> None:
+    """Show a clickable question grid and preserve the current practice state."""
+    st.sidebar.divider()
+    st.sidebar.markdown("### Questions")
+
+    answered = len(st.session_state.checked)
+    st.sidebar.caption(
+        f"{answered} answered · {len(questions) - answered} remaining"
+    )
+    st.sidebar.caption("✓ Correct  ·  ✕ Wrong  ·  Number = unanswered")
+
+    columns = st.sidebar.columns(4)
+    current = st.session_state.q_index
+
+    for index, question in enumerate(questions):
+        attempted = index in st.session_state.checked
+        selected = st.session_state.answers.get(index, set())
+
+        if attempted and is_correct(selected, question["correct"]):
+            label = f"✓ {index + 1}"
+            status = "Correct"
+        elif attempted:
+            label = f"✕ {index + 1}"
+            status = "Wrong"
+        else:
+            label = str(index + 1)
+            status = "Not answered"
+
+        with columns[index % 4]:
+            if st.button(
+                label,
+                key=f"nav_question_{index}",
+                type="primary" if index == current else "secondary",
+                use_container_width=True,
+                help=f"Question {index + 1}: {status}",
+            ):
+                st.session_state.q_index = index
+                st.session_state.started = True
+                st.session_state.finished = False
+                st.session_state.ended_early = False
+                st.rerun()
+
+
 def render_question(q: dict, q_index: int, total: int) -> None:
     top_l, top_r = st.columns([3, 1])
     with top_l:
@@ -615,7 +711,7 @@ def render_question(q: dict, q_index: int, total: int) -> None:
             if checked:
                 selected.add(key)
     else:
-        default_index = 0
+        default_index = None
         if previous:
             prev_letter = next(iter(previous))
             if prev_letter in keys:
@@ -857,7 +953,7 @@ def main() -> None:
         page_title="MCQ Practice",
         page_icon="📝",
         layout="centered",
-        initial_sidebar_state="collapsed",
+        initial_sidebar_state="expanded",
     )
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
@@ -881,6 +977,9 @@ def main() -> None:
     if st.sidebar.button("Reset quiz"):
         reset_quiz()
         st.rerun()
+
+    if st.session_state.started:
+        render_question_navigation(questions)
 
     if not st.session_state.started:
         render_start(len(questions))
