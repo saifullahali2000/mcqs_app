@@ -608,7 +608,7 @@ def render_start(total: int) -> None:
     )
 
     single_hint = "One answer → tap a single option"
-    multi_hint = "Multiple answers → tick every correct option"
+    multi_hint = "Multiple answers → tick the every correct option"
 
     st.markdown(
         f"""
